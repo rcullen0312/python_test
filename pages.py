@@ -1,106 +1,92 @@
 from selenium.webdriver.common.by import By
-
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 class UrbanRoutesPage:
-    """
-    Page object for interacting with the Urban Routes page.
-    """
-
     def __init__(self, driver):
         self.driver = driver
+        self.wait = WebDriverWait(driver, 10)  # You can adjust the timeout to suit your needs.
 
-    def set_address(self, departure, destination):
-        """
-        Set the departure and destination address fields on the page.
-        :param departure: The departure address
-        :param destination: The destination address
-        """
-        # Find the departure and destination address fields by their ID
-        departure_field = self.driver.find_element(By.ID, "departureField")
-        destination_field = self.driver.find_element(By.ID, "destinationField")
+    # Locators
+    FROM_FIELD = (By.ID, "from")
+    To_FIELD = (By.ID, "to")
+    PLAN_BUTTON = (By.ID, "")
+    PHONE_FIELD = (By.ID, "phone")
+    SMS_CODE_FIELD = (By.ID, "sms")
+    CREDIT_CARD_MODAL = (By.CLASS_NAME, "card-input")
+    LINK_BUTTON = (By.ID, "link-button")
+    DRIVER_COMMENT_FIELD = (By.ID, "comment")
+    BLANKET_CHECKBOX = (By.ID, "order-blanket")
+    HANDKERCHIEF_CHECKBOX = (By.ID, "order-handkerchief")
+    ICE_CREAM_BUTTON = (By.XPATH, "")
+    CAR_SEARCH_MODAL = (By.ID, "car-search-modal")
 
-        # Clear any existing input and set the new values
-        departure_field.clear()
-        departure_field.send_keys(departure)
-        destination_field.clear()
-        destination_field.send_keys(destination)
+    # Methods with explicit waits
+    def set_address(self, address):
+        field = self.wait.until(EC.presence_of_element_located(self.ADDRESS_FIELD))
+        field.clear()
+        field.send_keys(address)
 
-    def select_supportive_plan(self, plan_name):
-        """
-        Select a supportive plan from the dropdown menu by plan name.
-        :param plan_name: Name of the supportive plan to select
-        """
-        # Find the supportive plan dropdown by ID
-        plan_dropdown = self.driver.find_element(By.ID, "supportivePlanDropdown")
-        plan_dropdown.click()
+    def select_supportive_plan(self):
+        button = self.wait.until(EC.element_to_be_clickable(self.PLAN_BUTTON))
+        if not button.is_selected():
+            button.click()
 
-        # Find the plan option using XPath based on the plan name and select it
-        plan_option = self.driver.find_element(By.XPATH, f"//option[text()='{plan_name}']")
-        plan_option.click()
-
-    def fill_phone_number(self, phone_number):
-        """
-        Fill in the phone number input field.
-        :param phone_number: Phone number to input
-        """
-        phone_field = self.driver.find_element(By.ID, "phoneNumber")
-        phone_field.clear()
+    def fill_phone_number(self, phone_number, helpers):
+        phone_field = self.wait.until(EC.presence_of_element_located(self.PHONE_FIELD))
         phone_field.send_keys(phone_number)
+        sms_code = helpers.retrieve_phone_code()
+        sms_code_field = self.driver.find_element(*self.SMS_CODE_FIELD)
+        sms_code_field.send_keys(sms_code)
 
-    def add_credit_card(self, card_number, exp_date, cvv):
-        """
-        Add a credit card information in the respective fields.
-        :param card_number: The credit card number
-        :param exp_date: The expiration date of the card
-        :param cvv: The CVV of the card
-        """
-        card_number_field = self.driver.find_element(By.ID, "cardNumber")
-        exp_date_field = self.driver.find_element(By.ID, "expDate")
-        cvv_field = self.driver.find_element(By.ID, "cvv")
+    def add_credit_card(self, cvv):
+        card_field = self.wait.until(EC.presence_of_element_located(self.CREDIT_CARD_MODAL))
+        card_field.send_keys(cvv)
+        card_field.send_keys("\t")  # Simulate focus shift with TAB key
+        link_button = self.wait.until(EC.element_to_be_clickable(self.LINK_BUTTON))
+        link_button.click()
 
-        card_number_field.clear()
-        card_number_field.send_keys(card_number)
-
-        exp_date_field.clear()
-        exp_date_field.send_keys(exp_date)
-
-        cvv_field.clear()
-        cvv_field.send_keys(cvv)
-
-    def write_comment_for_driver(self, comment):
-        """
-        Write a comment for the driver in the designated input field.
-        :param comment: The comment to write
-        """
-        comment_field = self.driver.find_element(By.ID, "commentForDriver")
-        comment_field.clear()
-        comment_field.send_keys(comment)
+    def comment_for_driver(self, comment):
+        field = self.wait.until(EC.presence_of_element_located(self.DRIVER_COMMENT_FIELD))
+        field.send_keys(comment)
 
     def order_blanket_and_handkerchiefs(self):
-        """
-        Order blanket and handkerchiefs from the shopping options.
-        """
-        blanket_checkbox = self.driver.find_element(By.ID, "blanketOption")
-        handkerchief_checkbox = self.driver.find_element(By.ID, "handkerchiefOption")
+        self.wait.until(EC.element_to_be_clickable(self.BLANKET_CHECKBOX)).click()
+        self.wait.until(EC.element_to_be_clickable(self.HANDKERCHIEF_CHECKBOX)).click()
 
-        if not blanket_checkbox.is_selected():
-            blanket_checkbox.click()
+    def order_ice_cream(self, count=2):
+        for _ in range(count):
+            self.wait.until(EC.element_to_be_clickable(self.ICE_CREAM_BUTTON)).click()
 
-        if not handkerchief_checkbox.is_selected():
-            handkerchief_checkbox.click()
+    def order_taxi(self, helpers, comment=""):
+        self.fill_phone_number(helpers.retrieve_phone_number(), helpers)
+        self.comment_for_driver(comment)
+        self.wait.until(EC.presence_of_element_located(self.CAR_SEARCH_MODAL))
 
-    def order_ice_creams(self):
-        """
-        Order ice creams from the shopping options.
-        """
-        ice_cream_checkbox = self.driver.find_element(By.ID, "iceCreamOption")
-        if not ice_cream_checkbox.is_selected():
-            ice_cream_checkbox.click()
+    # Added assertions or checks for verification during tests
+    def is_address_set(self):
+        return bool(self.driver.find_element(*self.ADDRESS_FIELD).get_attribute("value"))
 
-    def order_taxi_with_supportive_plan(self):
-        """
-        Order a taxi with a supportive plan.
-        """
-        taxi_button = self.driver.find_element(By.ID, "taxiButton")
-        taxi_button.click()
+    def is_plan_selected(self):
+        return self.driver.find_element(*self.PLAN_BUTTON).is_selected()
 
+    def is_phone_number_filled(self):
+        return bool(self.driver.find_element(*self.PHONE_FIELD).get_attribute("value"))
+
+    def is_card_linked(self):
+        return self.driver.find_element(*self.CREDIT_CARD_MODAL).get_attribute("value") != ""
+
+    def is_driver_comment_added(self):
+        return bool(self.driver.find_element(*self.DRIVER_COMMENT_FIELD).get_attribute("value"))
+
+    def are_blanket_and_handkerchiefs_ordered(self):
+        blanket = self.driver.find_element(*self.BLANKET_CHECKBOX).is_selected()
+        handkerchief = self.driver.find_element(*self.HANDKERCHIEF_CHECKBOX).is_selected()
+        return blanket and handkerchief
+
+    def are_ice_creams_ordered(self, count):
+        ice_creams = len(self.driver.find_elements(*self.ICE_CREAM_BUTTON))
+        return ice_creams == count
+
+    def is_car_search_model_visible(self):
+        return self.driver.find_element(*self.CAR_SEARCH_MODAL).is_displayed()
